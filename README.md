@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icon.svg" alt="ArchiveBox Logo" width="21%">
+  <img src="icon.png" alt="ArchiveBox Logo" width="21%">
 </p>
 
 # ArchiveBox on StartOS
