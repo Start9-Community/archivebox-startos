@@ -39,7 +39,7 @@ On install, ArchiveBox is initialized with a default Django superuser:
 
 ## Installation and First-Run Flow
 
-On install, the package runs `archivebox init --quick` against `/data`, then creates the default `admin` superuser. After install completes, start the service and open the Web UI to log in.
+On first start, the upstream entrypoint initializes `/data` (`archivebox init --quick`, triggered by `--quick-init`) and creates the default `admin` superuser from the `ADMIN_USERNAME` / `ADMIN_PASSWORD` env vars set by the package. Open the Web UI and log in to begin archiving.
 
 ---
 

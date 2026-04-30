@@ -10,9 +10,6 @@ const dict = {
   // interfaces.ts
   'Web UI': 4,
   'The web interface of ArchiveBox': 5,
-
-  // init/setup.ts
-  'Initializing ArchiveBox data directory': 6,
 } as const
 
 /**
