@@ -12,28 +12,29 @@ export const main = sdk.setupMain(async ({ effects }) => {
     'archivebox-sub',
   )
 
-  return sdk.Daemons.of(effects)
-    .addOneshot('chown', {
-      subcontainer,
-      exec: {
-        command: ['chown', '-R', 'archivebox:archivebox', '/data'],
-        user: 'root',
+  // The upstream image's entrypoint (`dumb-init -- docker_entrypoint.sh`)
+  // fixes /data ownership, drops to the `archivebox` user via gosu, and runs
+  // the default CMD (`archivebox server --quick-init 0.0.0.0:8000`).
+  // `archivebox init --quick` is idempotent — the admin user is provisioned
+  // by the `setAdminPassword` action, not by env-var seeding.
+  return sdk.Daemons.of(effects).addDaemon('primary', {
+    subcontainer,
+    exec: {
+      command: sdk.useEntrypoint(),
+      env: {
+        // Accept any hostname — StartOS handles access control at the network layer.
+        ALLOWED_HOSTS: '*',
       },
-      requires: [],
-    })
-    .addDaemon('primary', {
-      subcontainer,
-      exec: {
-        command: ['archivebox', 'server', '--quick-init', `0.0.0.0:${uiPort}`],
-      },
-      ready: {
-        display: i18n('Web Interface'),
-        fn: () =>
-          sdk.healthCheck.checkPortListening(effects, uiPort, {
-            successMessage: i18n('The web interface is ready'),
-            errorMessage: i18n('The web interface is not ready'),
-          }),
-      },
-      requires: ['chown'],
-    })
+    },
+    ready: {
+      display: i18n('Web Interface'),
+      gracePeriod: 60_000,
+      fn: () =>
+        sdk.healthCheck.checkPortListening(effects, uiPort, {
+          successMessage: i18n('The web interface is ready'),
+          errorMessage: i18n('The web interface is not ready'),
+        }),
+    },
+    requires: [],
+  })
 })

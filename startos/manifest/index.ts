@@ -9,7 +9,6 @@ export const manifest = setupManifest({
   upstreamRepo: 'https://github.com/ArchiveBox/ArchiveBox',
   marketingUrl: 'https://archivebox.io/',
   donationUrl: 'https://github.com/sponsors/pirate',
-  docsUrls: ['https://github.com/ArchiveBox/ArchiveBox/wiki'],
   description: { short, long },
   volumes: ['main'],
   images: {
@@ -19,14 +18,6 @@ export const manifest = setupManifest({
       },
       arch: ['x86_64', 'aarch64'],
     },
-  },
-  alerts: {
-    install: null,
-    update: null,
-    uninstall: null,
-    restore: null,
-    start: null,
-    stop: null,
   },
   dependencies: {},
 })

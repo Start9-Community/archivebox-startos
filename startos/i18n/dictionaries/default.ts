@@ -11,8 +11,16 @@ const dict = {
   'Web UI': 4,
   'The web interface of ArchiveBox': 5,
 
-  // init/setup.ts
-  'Initializing ArchiveBox data directory': 6,
+  // actions/setAdminPassword.ts
+  'Set Admin Password': 6,
+  'Generate a new random password for the ArchiveBox admin account. Replaces any existing password.': 7,
+  'ArchiveBox Login Credentials': 8,
+  'Use these credentials to sign in to ArchiveBox.': 9,
+  Username: 10,
+  Password: 11,
+
+  // init/watchCredentials.ts
+  'Set the admin password before signing in to ArchiveBox': 12,
 } as const
 
 /**
