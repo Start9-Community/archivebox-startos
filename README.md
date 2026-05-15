@@ -56,14 +56,13 @@ StartOS state for the package is stored at `/data/.startos-store.json` (hidden) 
 
 ## Installation and First-Run Flow
 
-On install the package files a **critical task** prompting the user to run **Set Admin Password**. The service cannot start until that task completes.
+On install the package runs `archivebox init --quick` once in a temp subcontainer to pre-create the SQLite index, then files a **critical task** prompting the user to run **Set Admin Password**. The service cannot start until that task completes.
 
 Running the task:
 
-1. Initializes `/data` if it isn't already (`archivebox init --quick` is idempotent).
-2. Generates a random 32-character admin password.
-3. Creates the Django superuser `admin` (or rotates its password if it already exists) directly against ArchiveBox's auth DB.
-4. Stores the password in `/data/.startos-store.json` and displays it once.
+1. Generates a random 32-character admin password.
+2. Creates the Django superuser `admin` (or rotates its password if it already exists) directly against ArchiveBox's auth DB.
+3. Stores the password in `/data/.startos-store.json` and displays it once.
 
 After the task completes, start the service, open the Web UI, and sign in. To rotate the admin password later, re-run the **Set Admin Password** action.
 

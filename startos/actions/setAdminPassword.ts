@@ -25,22 +25,15 @@ export const setAdminPassword = sdk.Action.withoutInput(
     })
 
     // Apply the password directly to ArchiveBox's Django auth DB so the same
-    // action covers first-set and later rotation. archivebox init --quick is
-    // idempotent — it creates the SQLite index on first run and verifies it
-    // on subsequent runs.
+    // action covers first-set and later rotation. The SQLite index and /data
+    // ownership are pre-created by `initializeArchivebox` on install, so this
+    // action only does the password write.
     await sdk.SubContainer.withTemp(
       effects,
       { imageId: 'archivebox' },
       mounts,
       'set-admin-password',
       async (sub) => {
-        await sub.execFail(
-          ['chown', '-R', 'archivebox:archivebox', '/data'],
-          { user: 'root' },
-        )
-        await sub.execFail(['archivebox', 'init', '--quick'], {
-          user: 'archivebox',
-        })
         await sub.execFail(
           [
             'archivebox',
