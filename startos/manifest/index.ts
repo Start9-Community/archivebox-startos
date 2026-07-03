@@ -14,7 +14,7 @@ export const manifest = setupManifest({
   images: {
     archivebox: {
       source: {
-        dockerTag: 'archivebox/archivebox:0.7.3',
+        dockerTag: 'archivebox/archivebox:0.7.4',
       },
       arch: ['x86_64', 'aarch64'],
     },
