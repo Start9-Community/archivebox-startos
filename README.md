@@ -34,10 +34,10 @@
 
 ## Image and Container Runtime
 
-| Property      | Value                                                  |
-| ------------- | ------------------------------------------------------ |
-| Image         | `archivebox/archivebox` (upstream unmodified)          |
-| Architectures | x86_64, aarch64                                        |
+| Property      | Value                                                                                     |
+| ------------- | ----------------------------------------------------------------------------------------- |
+| Image         | `archivebox/archivebox` (upstream unmodified)                                             |
+| Architectures | x86_64, aarch64                                                                           |
 | Entrypoint    | Upstream `dumb-init -- docker_entrypoint.sh` + default CMD, run via `sdk.useEntrypoint()` |
 
 The upstream entrypoint fixes ownership of `/data`, drops to the `archivebox` user via `gosu`, then runs the default `archivebox server --quick-init` command. `--quick-init` performs `archivebox init --quick` on first launch, which is idempotent on subsequent launches.
@@ -72,9 +72,9 @@ After the task completes, start the service, open the Web UI, and sign in. To ro
 
 All ArchiveBox configuration is managed through the **upstream web UI** and ArchiveBox's own admin pages. The package sets one env var on the daemon:
 
-| Env Var          | Value     | Purpose                                            |
-| ---------------- | --------- | -------------------------------------------------- |
-| `ALLOWED_HOSTS`  | `*`       | Accept LAN, `.local`, `.onion`, and custom domains |
+| Env Var         | Value | Purpose                                            |
+| --------------- | ----- | -------------------------------------------------- |
+| `ALLOWED_HOSTS` | `*`   | Accept LAN, `.local`, `.onion`, and custom domains |
 
 The admin password is **not** passed via env var — it's set in ArchiveBox's Django auth DB by the `Set Admin Password` action, so the same code path covers first-set and rotation.
 
@@ -90,8 +90,8 @@ The admin password is **not** passed via env var — it's set in ArchiveBox's Dj
 
 ## Actions (StartOS UI)
 
-| Action             | Purpose                                                                                    | Visibility | Allowed When |
-| ------------------ | ------------------------------------------------------------------------------------------ | ---------- | ------------ |
+| Action             | Purpose                                                                                                                                                                                | Visibility | Allowed When |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------ |
 | Set Admin Password | Generates a new random admin password, applies it to ArchiveBox, and displays it. Used for both first-time setup (surfaced as a critical task on install) and later password rotation. | Enabled    | Any status   |
 
 ---
@@ -137,7 +137,7 @@ None.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for build instructions.
+Build and development workflow follow the StartOS packaging guide: <https://docs.start9.com/packaging>. Keep `README.md`, `instructions.md`, and `AGENTS.md` in sync with any change to user-visible behavior or package structure.
 
 ---
 
