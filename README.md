@@ -4,13 +4,15 @@
 
 # ArchiveBox on StartOS
 
-> **Upstream docs:** <https://github.com/ArchiveBox/ArchiveBox/wiki>
->
 > Everything not listed in this document should behave the same as upstream
 > ArchiveBox. If a feature, setting, or behavior is not mentioned here, the
-> upstream documentation is accurate and fully applicable.
+> upstream documentation is accurate and fully applicable — see the
+> Documentation section of `instructions.md` for links.
 
-[ArchiveBox](https://archivebox.io/) is a powerful, self-hosted internet archiving solution to collect, save, and view websites you want to preserve offline. It saves snapshots of URLs you feed it in HTML, PDF, screenshot, WARC, and other formats.
+[ArchiveBox](https://github.com/ArchiveBox/ArchiveBox) is a self-hosted internet archiver: it takes URLs you feed it and saves each one as HTML, PDF, screenshot, WARC, and media, then indexes the results so they stay readable offline. This package runs the upstream image unmodified and adds the one thing the image cannot do for itself — provision the admin account.
+
+- **Upstream repo:** <https://github.com/ArchiveBox/ArchiveBox>
+- **Wrapper repo:** <https://github.com/Start9-Community/archivebox-startos>
 
 ---
 
@@ -18,126 +20,133 @@
 
 - [Image and Container Runtime](#image-and-container-runtime)
 - [Volume and Data Layout](#volume-and-data-layout)
-- [Installation and First-Run Flow](#installation-and-first-run-flow)
-- [Configuration Management](#configuration-management)
-- [Network Access and Interfaces](#network-access-and-interfaces)
-- [Actions (StartOS UI)](#actions-startos-ui)
-- [Backups and Restore](#backups-and-restore)
-- [Health Checks](#health-checks)
+- [File Models](#file-models)
 - [Dependencies](#dependencies)
+- [Network Access and Interfaces](#network-access-and-interfaces)
+- [Installation and First-Run Flow](#installation-and-first-run-flow)
+- [Actions](#actions)
+- [Tasks](#tasks)
+- [Health Checks](#health-checks)
+- [Backups and Restore](#backups-and-restore)
 - [Limitations and Differences](#limitations-and-differences)
-- [What Is Unchanged from Upstream](#what-is-unchanged-from-upstream)
-- [Contributing](#contributing)
 - [Quick Reference for AI Consumers](#quick-reference-for-ai-consumers)
 
 ---
 
 ## Image and Container Runtime
 
-| Property      | Value                                                                                     |
-| ------------- | ----------------------------------------------------------------------------------------- |
-| Image         | `archivebox/archivebox` (upstream unmodified)                                             |
-| Architectures | x86_64, aarch64                                                                           |
-| Entrypoint    | Upstream `dumb-init -- docker_entrypoint.sh` + default CMD, run via `sdk.useEntrypoint()` |
+One upstream image, unmodified, running its own entrypoint.
 
-The upstream entrypoint fixes ownership of `/data`, drops to the `archivebox` user via `gosu`, then runs the default `archivebox server --quick-init` command. `--quick-init` performs `archivebox init --quick` on first launch, which is idempotent on subsequent launches.
+| Property      | Value                                                  |
+| ------------- | ------------------------------------------------------ |
+| Image         | `archivebox/archivebox`                                |
+| Architectures | x86_64, aarch64                                        |
+| Entrypoint    | Upstream's, via `sdk.useEntrypoint()` — not overridden |
 
----
+| Subcontainer      | Purpose                                                              |
+| ----------------- | -------------------------------------------------------------------- |
+| `archivebox-sub`  | The `primary` daemon — the one to `attach` to                        |
+| `archivebox-init` | Temporary, install only: fixes `/data` ownership and seeds the index |
+
+The action below also runs in a temporary subcontainer of its own, named for the action.
+
+Upstream's entrypoint (`dumb-init -- docker_entrypoint.sh`) fixes ownership of `/data`, drops to the `archivebox` user via `gosu`, and runs the default command, which serves the web interface after a quick idempotent index check. The daemon's only environment variable is `ALLOWED_HOSTS=*`: StartOS decides which addresses reach the service, so ArchiveBox's own host allowlist would only ever reject an address the OS had already permitted.
 
 ## Volume and Data Layout
 
-| Volume | Mount Point | Purpose                                          |
-| ------ | ----------- | ------------------------------------------------ |
-| `main` | `/data`     | ArchiveBox collection (snapshots + SQLite index) |
+One volume, holding the whole ArchiveBox collection.
 
-StartOS state for the package is stored at `/data/.startos-store.json` (hidden) — currently just the admin password set by the `Set Admin Password` action.
+| Volume | Mount Point | Purpose                                                             |
+| ------ | ----------- | ------------------------------------------------------------------- |
+| `main` | `/data`     | Snapshots, the SQLite index, ArchiveBox's own config, and the store |
 
----
+Everything ArchiveBox writes lives here, so the volume grows with the archive rather than with usage — a collection of large pages with media extractors enabled is measured in gigabytes.
 
-## Installation and First-Run Flow
+## File Models
 
-On install the package runs `archivebox init --quick` once in a temp subcontainer to pre-create the SQLite index, then files a **critical task** prompting the user to run **Set Admin Password**. The service cannot start until that task completes.
+One model, and it records a credential rather than owning it.
 
-Running the task:
+| File                  | Format | Modelled                | Written by                    |
+| --------------------- | ------ | ----------------------- | ----------------------------- |
+| `.startos-store.json` | JSON   | Yes — `FileHelper.json` | The Set Admin Password action |
 
-1. Generates a random 32-character admin password.
-2. Creates the Django superuser `admin` (or rotates its password if it already exists) directly against ArchiveBox's auth DB.
-3. Stores the password in `/data/.startos-store.json` and displays it once.
+It sits at `/data/.startos-store.json` — inside the collection volume, dot-prefixed so it does not appear among ArchiveBox's own files. It holds one field, `adminPassword`.
 
-After the task completes, start the service, open the Web UI, and sign in. To rotate the admin password later, re-run the **Set Admin Password** action.
+**The store is not the authority on the password.** The password lives in ArchiveBox's Django auth database; the store keeps a copy so the value can be shown again and so install can tell whether the account has been provisioned at all. Editing the file by hand therefore changes nothing about signing in — it only changes what StartOS believes. Deleting it re-raises the setup task on the next init, and running the action from there rotates the real password to match.
 
----
-
-## Configuration Management
-
-All ArchiveBox configuration is managed through the **upstream web UI** and ArchiveBox's own admin pages. The package sets one env var on the daemon:
-
-| Env Var         | Value | Purpose                                            |
-| --------------- | ----- | -------------------------------------------------- |
-| `ALLOWED_HOSTS` | `*`   | Accept LAN, `.local`, `.onion`, and custom domains |
-
-The admin password is **not** passed via env var — it's set in ArchiveBox's Django auth DB by the `Set Admin Password` action, so the same code path covers first-set and rotation.
-
----
-
-## Network Access and Interfaces
-
-| Interface | Port | Protocol | Purpose                |
-| --------- | ---- | -------- | ---------------------- |
-| Web UI    | 8000 | HTTP     | ArchiveBox web console |
-
----
-
-## Actions (StartOS UI)
-
-| Action             | Purpose                                                                                                                                                                                | Visibility | Allowed When |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------ |
-| Set Admin Password | Generates a new random admin password, applies it to ArchiveBox, and displays it. Used for both first-time setup (surfaced as a critical task on install) and later password rotation. | Enabled    | Any status   |
-
----
-
-## Backups and Restore
-
-**Backed up:** the entire `main` volume — the SQLite database, all archived snapshots (HTML, PDF, screenshot, media, WARC), any user configuration written under `/data`, and the StartOS `.startos-store.json` state file.
-
-**Restore behavior:** restoring overwrites current data with the backup copy. The admin password from the backup is restored along with the rest of the collection.
-
----
-
-## Health Checks
-
-| Check         | Method                | Grace Period | Messages                                                        |
-| ------------- | --------------------- | ------------ | --------------------------------------------------------------- |
-| Web Interface | Port listening (8000) | 60 seconds   | "The web interface is ready" / "The web interface is not ready" |
-
-The grace period accommodates first-launch `archivebox init --quick` verification.
-
----
+ArchiveBox's own configuration is not modelled. Every `ARCHIVEBOX_*` setting is managed through the application's admin pages and persists in the volume, so this package neither seeds nor rewrites it.
 
 ## Dependencies
 
 None.
 
----
+## Network Access and Interfaces
+
+One interface, serving the archive and the Django admin pages behind it.
+
+| Interface | Id   | Type | Port | Description                     |
+| --------- | ---- | ---- | ---- | ------------------------------- |
+| Web UI    | `ui` | ui   | 8000 | The web interface of ArchiveBox |
+
+The port is bound on the `ui-multi` MultiHost over HTTP and is not masked.
+
+## Installation and First-Run Flow
+
+Install does two things upstream leaves to the operator, then hands the account over to the user.
+
+First it runs a temporary subcontainer to `chown` `/data` to the `archivebox` user and run `archivebox init --quick`, so the SQLite index exists before anything else touches it. Then it checks the store, finds no password, and raises a `critical` task for [Set Admin Password](#actions).
+
+The index is seeded here rather than left to the action because a cold `archivebox init --quick` routinely runs longer than the SDK's 30-second exec limit, and the action would be killed mid-write. By the time the user runs it, the only work left is the password.
+
+## Actions
+
+One action, and it is both the setup step and the rotation step.
+
+### Set Admin Password
+
+Generates a 32-character random password and applies it to the `admin` account. Run it when its task appears, and any time afterwards to rotate the password.
+
+- **What it changes:** the `admin` user in ArchiveBox's Django auth database — created with staff and superuser rights if absent — and `adminPassword` in the store.
+- **Availability:** any status; it works on a stopped service because it writes to the database directly rather than through the running server.
+- **Cost:** seconds. It does not interrupt the service.
+- **Repeat safety:** idempotent in effect, but **not** repeatable in value — each run generates a new password and invalidates the previous one.
+- **Outputs:** the username (`admin`) and the new password, shown once. Nothing displays it again; the store holds it but the action result is the only place it is surfaced.
+
+## Tasks
+
+One task, raised at install and again whenever the store has no password.
+
+| Task               | Severity   | Raised when                                | Cleared when    |
+| ------------------ | ---------- | ------------------------------------------ | --------------- |
+| Set Admin Password | `critical` | Init finds no `adminPassword` in the store | The action runs |
+
+`critical` blocks the service from starting and suspends the ordinary controls, so a fresh install shows the task and nothing else. That is the intended first-run experience: there is no default password to fall back on, and ArchiveBox's own signup path is not exposed.
+
+The check runs on **every** init, not only on install, so deleting the store brings the task back rather than leaving the service unstartable with no prompt.
+
+## Health Checks
+
+One check, on the only daemon.
+
+| Check     | Displayed as    | Method                 | Grace Period |
+| --------- | --------------- | ---------------------- | ------------ |
+| `primary` | "Web Interface" | Port 8000 is listening | 60s          |
+
+The 60-second grace covers upstream's start-up index verification, which runs before the server binds. A failure past that point means the daemon did not come up — read the service logs, since the check itself only reports whether the port is open.
+
+## Backups and Restore
+
+The `main` volume is copied wholesale — `sdk.Backups.ofVolumes('main')`. Nothing is dumped and nothing is excluded, so the backup is the archive: snapshots, the SQLite index, ArchiveBox's configuration, and the store.
+
+A restored instance needs nothing done to it. The admin password comes back with the auth database, which is inside the same volume, so the credential from the backup is still the one that works.
+
+Backups scale with the collection, which is the practical constraint here — a large archive is a large backup every time, because there is no incremental path.
 
 ## Limitations and Differences
 
-1. This is an MVP packaging — only the admin-password action is exposed. Advanced ArchiveBox configuration (e.g. `ARCHIVEBOX_*` env vars beyond `ALLOWED_HOSTS`) is not surfaced; defaults are used.
-2. Outgoing network access depends on StartOS network configuration. Some archive methods (e.g. media downloads) may fail without proper egress.
-
----
-
-## What Is Unchanged from Upstream
-
-- ArchiveBox itself runs unmodified from the official `archivebox/archivebox` image.
-- Snapshot creation, extractors, indexing, and search behave as upstream documents.
-- The Django admin pages, REST API, and CLI behave as upstream documents.
-
----
-
-## Contributing
-
-Build and development workflow follow the StartOS packaging guide: <https://docs.start9.com/packaging>. Keep `README.md`, `instructions.md`, and `AGENTS.md` in sync with any change to user-visible behavior or package structure.
+1. **Only the admin password is exposed as an action.** Every other ArchiveBox setting is configured through the application's own admin pages rather than through StartOS.
+2. **The admin account is the only one this package provisions.** Additional users are created from within ArchiveBox.
+3. **There is no way to set a chosen password.** The action generates one; it does not accept input.
 
 ---
 
@@ -145,22 +154,26 @@ Build and development workflow follow the StartOS packaging guide: <https://docs
 
 ```yaml
 package_id: archivebox
-architectures: [x86_64, aarch64]
+image: archivebox/archivebox
+architectures:
+  - x86_64
+  - aarch64
+subcontainers:
+  - archivebox-sub # the primary daemon
+  - archivebox-init # temporary, install only
 volumes:
   main: /data
-ports:
-  ui: 8000
-dependencies: none
+file_models:
+  - .startos-store.json
 startos_managed_env_vars:
   - ALLOWED_HOSTS
+dependencies: []
+interfaces:
+  ui: { type: ui, port: 8000 }
 actions:
   - set-admin-password
+tasks:
+  - { action: set-admin-password, severity: critical }
 health_checks:
-  - checkPortListening:8000: web_interface (60s grace period)
-backup_volumes:
-  - main (full volume, including .startos-store.json)
-configuration: upstream web UI only
-auth:
-  admin_username: admin
-  admin_password: generated by the `set-admin-password` action (also used for rotation)
+  - primary # displayed "Web Interface"
 ```
