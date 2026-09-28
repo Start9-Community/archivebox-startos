@@ -28,3 +28,4 @@ verified, tried, and decided belongs in the commit message and the PR body.
 
 - **Don't fold `init/initializeArchivebox.ts` into the action it exists for.** A cold `archivebox init --quick` regularly runs past the SDK's 30-second exec limit, so doing it inside `set-admin-password` gets the action SIGKILL'd mid-write.
 - **The store file is deliberately `.startos-store.json`, not `store.json`.** It shares the volume with ArchiveBox's collection at `/data`, and the dot keeps it out of the user's archive listing. Renaming it to match the rest of the fleet puts StartOS state in the middle of their files.
+- **Keep the explicit `0.0.0.0:8000` in the daemon's server command.** Upstream's default CMD listens on 5797, and changing the bound port gives the interface new addresses, breaking every existing user's bookmarks and domains.

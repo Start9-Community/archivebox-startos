@@ -37,20 +37,30 @@
 
 One upstream image, unmodified, running its own entrypoint.
 
-| Property      | Value                                                  |
-| ------------- | ------------------------------------------------------ |
-| Image         | `archivebox/archivebox`                                |
-| Architectures | x86_64, aarch64                                        |
-| Entrypoint    | Upstream's, via `sdk.useEntrypoint()` — not overridden |
+| Property      | Value                                                                 |
+| ------------- | --------------------------------------------------------------------- |
+| Image         | `archivebox/archivebox`                                               |
+| Architectures | x86_64, aarch64                                                       |
+| Entrypoint    | Upstream's, via `sdk.useEntrypoint()`; only the command is overridden |
 
-| Subcontainer      | Purpose                                                              |
-| ----------------- | -------------------------------------------------------------------- |
-| `archivebox-sub`  | The `primary` daemon — the one to `attach` to                        |
-| `archivebox-init` | Temporary, install only: fixes `/data` ownership and seeds the index |
+| Subcontainer         | Purpose                                                    |
+| -------------------- | ---------------------------------------------------------- |
+| `archivebox-sub`     | The `primary` daemon — the one to `attach` to              |
+| `archivebox-init`    | Temporary, install only: seeds the index                   |
+| `archivebox-migrate` | Temporary, update from 0.7.x only: converts the collection |
 
 The action below also runs in a temporary subcontainer of its own, named for the action.
 
-Upstream's entrypoint (`dumb-init -- docker_entrypoint.sh`) fixes ownership of `/data`, drops to the `archivebox` user via `gosu`, and runs the default command, which serves the web interface after a quick idempotent index check. The daemon's only environment variable is `ALLOWED_HOSTS=*`: StartOS decides which addresses reach the service, so ArchiveBox's own host allowlist would only ever reject an address the OS had already permitted.
+Upstream's entrypoint (`dumb-init -- /app/bin/docker_entrypoint.sh`) repairs ownership of the top-level `/data` directories, drops to the `archivebox` user, and runs `archivebox server --init 0.0.0.0:8000`, which applies any pending database migrations and then serves the web interface. The daemon overrides only the listen port — upstream's default is 5797 — so the interface's port, and therefore every address StartOS assigned it, stays stable across updates. The temporary subcontainers call the same entrypoint script as root, so every command runs as the `archivebox` user against a correctly owned collection.
+
+Two environment variables are set on the daemon:
+
+| Variable               | Value                       | Why                                                                                                                                 |
+| ---------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `ALLOWED_HOSTS`        | `*`                         | StartOS decides which addresses reach the service; ArchiveBox's own allowlist would only reject an address the OS already permitted |
+| `SERVER_SECURITY_MODE` | `safe-onedomain-nojsreplay` | Serves the admin, API and archived content on whichever address the browser used, with no `BASE_URL` and no wildcard subdomains     |
+
+`BASE_URL` is left unset. Upstream's default `auto` mode wants one canonical URL with `admin.`/`web.`/`api.` subdomains beneath it, and a StartOS service is reached on several addresses at once (LAN, IP, Tor, custom domains) — pinning any one would break the others. With `BASE_URL` unset, ArchiveBox honours the proxy's `X-Forwarded-Proto`, so logins over HTTPS pass Django's CSRF origin check.
 
 ## Volume and Data Layout
 
@@ -82,7 +92,7 @@ None.
 
 ## Network Access and Interfaces
 
-One interface, serving the archive and the Django admin pages behind it.
+One interface, serving the archive, the Django admin pages, and the REST API at `/api/v1/` that the official ArchiveBox mobile and desktop apps connect to. The apps authenticate with a token created under `/admin/api/apitoken/`.
 
 | Interface | Id   | Type | Port | Description                     |
 | --------- | ---- | ---- | ---- | ------------------------------- |
@@ -94,9 +104,15 @@ The port is bound on the `ui-multi` MultiHost over HTTP and is not masked.
 
 Install does two things upstream leaves to the operator, then hands the account over to the user.
 
-First it runs a temporary subcontainer to `chown` `/data` to the `archivebox` user and run `archivebox init --quick`, so the SQLite index exists before anything else touches it. Then it checks the store, finds no password, and raises a `critical` task for [Set Admin Password](#actions).
+First it runs `archivebox init --quick` in a temporary subcontainer, so the SQLite index exists before anything else touches it. Then it checks the store, finds no password, and raises a `critical` task for [Set Admin Password](#actions).
 
 The index is seeded here rather than left to the action because a cold `archivebox init --quick` routinely runs longer than the SDK's 30-second exec limit, and the action would be killed mid-write. By the time the user runs it, the only work left is the password.
+
+### Upgrading from 0.7.x
+
+Updating a 0.7.x install needs nothing from the user, but the update itself is slow. The version migration runs `archivebox update --migrate-only` in the `archivebox-migrate` subcontainer, which applies the 0.9 database migrations and then moves every snapshot from `archive/<timestamp>/` to `archive/users/<username>/snapshots/<YYYYMMDD>/<domain>/<uuid>/`. On a large collection this takes minutes to hours, and the update does not complete until it finishes. Restoring a 0.7.x backup runs the same migration.
+
+If the conversion fails, StartOS restores the volume from the backup it took before the update and returns the package to 0.7.x. Once it succeeds it cannot be reversed, so the package cannot be downgraded.
 
 ## Actions
 
@@ -147,6 +163,9 @@ Backups scale with the collection, which is the practical constraint here — a 
 1. **Only the admin password is exposed as an action.** Every other ArchiveBox setting is configured through the application's own admin pages rather than through StartOS.
 2. **The admin account is the only one this package provisions.** Additional users are created from within ArchiveBox.
 3. **There is no way to set a chosen password.** The action generates one; it does not accept input.
+4. **Archived pages' JavaScript is not replayed.** `safe-onedomain-nojsreplay` serves saved HTML without running its scripts, because they would share an origin with the admin session. Screenshots, PDFs, SingleFile, WARC/WACZ and media outputs are unaffected. Full replay needs upstream's wildcard-subdomain mode, which StartOS does not provide.
+5. **`SERVER_SECURITY_MODE` cannot be changed from the admin UI.** It is set by environment variable, which overrides ArchiveBox's own config.
+6. **Links in the Archive Results table on a snapshot's admin edit page point at `http://archivebox.localhost:8000`.** Upstream builds those links without the request, so with `BASE_URL` unset they fall back to its local default. The snapshot view page and its outputs link correctly; open results from there.
 
 ---
 
@@ -161,12 +180,14 @@ architectures:
 subcontainers:
   - archivebox-sub # the primary daemon
   - archivebox-init # temporary, install only
+  - archivebox-migrate # temporary, update from 0.7.x only
 volumes:
   main: /data
 file_models:
   - .startos-store.json
 startos_managed_env_vars:
   - ALLOWED_HOSTS
+  - SERVER_SECURITY_MODE
 dependencies: []
 interfaces:
   ui: { type: ui, port: 8000 }
