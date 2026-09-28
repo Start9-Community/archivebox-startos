@@ -21,7 +21,7 @@ To rotate the admin password later, run the **Set Admin Password** action again 
 
 ### Updating from ArchiveBox 0.7
 
-Back up ArchiveBox before updating. The first start after the update converts your collection to the 0.9 format and can take a long time on a large archive; ArchiveBox shows as starting until it finishes. The conversion cannot be undone.
+The update converts your collection to the 0.9 format and can take a long time on a large archive; leave it running until it completes. The conversion cannot be undone.
 
 ## Using ArchiveBox
 

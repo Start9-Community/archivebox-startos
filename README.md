@@ -37,22 +37,23 @@
 
 One upstream image, unmodified, running its own entrypoint.
 
-| Property      | Value                                                  |
-| ------------- | ------------------------------------------------------ |
-| Image         | `archivebox/archivebox`                                |
-| Architectures | x86_64, aarch64                                        |
-| Entrypoint    | Upstream's, via `sdk.useEntrypoint()` — not overridden |
+| Property      | Value                                                                 |
+| ------------- | --------------------------------------------------------------------- |
+| Image         | `archivebox/archivebox`                                               |
+| Architectures | x86_64, aarch64                                                       |
+| Entrypoint    | Upstream's, via `sdk.useEntrypoint()`; only the command is overridden |
 
-| Subcontainer      | Purpose                                                                   |
-| ----------------- | ------------------------------------------------------------------------- |
-| `archivebox-sub`  | The `migrate` oneshot, then the `primary` daemon — the one to `attach` to |
-| `archivebox-init` | Temporary, install only: seeds the index                                  |
+| Subcontainer         | Purpose                                                    |
+| -------------------- | ---------------------------------------------------------- |
+| `archivebox-sub`     | The `primary` daemon — the one to `attach` to              |
+| `archivebox-init`    | Temporary, install only: seeds the index                   |
+| `archivebox-migrate` | Temporary, update from 0.7.x only: converts the collection |
 
 The action below also runs in a temporary subcontainer of its own, named for the action.
 
 Upstream's entrypoint (`dumb-init -- /app/bin/docker_entrypoint.sh`) repairs ownership of the top-level `/data` directories, drops to the `archivebox` user, and runs `archivebox server --init 0.0.0.0:8000`, which applies any pending database migrations and then serves the web interface. The daemon overrides only the listen port — upstream's default is 5797 — so the interface's port, and therefore every address StartOS assigned it, stays stable across updates. The temporary subcontainers call the same entrypoint script as root, so every command runs as the `archivebox` user against a correctly owned collection.
 
-Two environment variables are set on both the oneshot and the daemon:
+Two environment variables are set on the daemon:
 
 | Variable               | Value                       | Why                                                                                                                                 |
 | ---------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
@@ -109,9 +110,9 @@ The index is seeded here rather than left to the action because a cold `archiveb
 
 ### Upgrading from 0.7.x
 
-Updating a 0.7.x install needs nothing from the user, but the first start is slow. The `migrate` oneshot runs `archivebox update --migrate-only`, which applies the 0.9 database migrations and then moves every snapshot from `archive/<timestamp>/` to `archive/users/<username>/snapshots/<YYYYMMDD>/<domain>/<uuid>/`. On a large collection this takes minutes to hours; the service shows as starting until it finishes, and it resumes where it left off if interrupted. On every later start the oneshot finds nothing to move and exits in seconds.
+Updating a 0.7.x install needs nothing from the user, but the update itself is slow. The version migration runs `archivebox update --migrate-only` in the `archivebox-migrate` subcontainer, which applies the 0.9 database migrations and then moves every snapshot from `archive/<timestamp>/` to `archive/users/<username>/snapshots/<YYYYMMDD>/<domain>/<uuid>/`. On a large collection this takes minutes to hours, and the update does not complete until it finishes. Restoring a 0.7.x backup runs the same migration.
 
-The conversion cannot be reversed, so the package cannot be downgraded to 0.7.x. Restoring a pre-update backup is the only way back.
+If the conversion fails, StartOS restores the volume from the backup it took before the update and returns the package to 0.7.x. Once it succeeds it cannot be reversed, so the package cannot be downgraded.
 
 ## Actions
 
@@ -141,7 +142,7 @@ The check runs on **every** init, not only on install, so deleting the store bri
 
 ## Health Checks
 
-One check, on the only daemon. The `migrate` oneshot must exit successfully before the daemon starts; if it fails, the service log shows upstream's error.
+One check, on the only daemon.
 
 | Check     | Displayed as    | Method                 | Grace Period |
 | --------- | --------------- | ---------------------- | ------------ |
@@ -177,8 +178,9 @@ architectures:
   - x86_64
   - aarch64
 subcontainers:
-  - archivebox-sub # the migrate oneshot, then the primary daemon
+  - archivebox-sub # the primary daemon
   - archivebox-init # temporary, install only
+  - archivebox-migrate # temporary, update from 0.7.x only
 volumes:
   main: /data
 file_models:
@@ -189,8 +191,6 @@ startos_managed_env_vars:
 dependencies: []
 interfaces:
   ui: { type: ui, port: 8000 }
-oneshots:
-  - migrate # archivebox update --migrate-only
 actions:
   - set-admin-password
 tasks:

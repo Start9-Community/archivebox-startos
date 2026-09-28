@@ -12,35 +12,26 @@ export const main = sdk.setupMain(async ({ effects }) => {
     'archivebox-sub',
   )
 
-  return sdk.Daemons.of(effects)
-    .addOneshot('migrate', {
-      subcontainer,
-      exec: {
-        command: sdk.useEntrypoint(['archivebox', 'update', '--migrate-only']),
-        env,
-      },
-      requires: [],
-    })
-    .addDaemon('primary', {
-      subcontainer,
-      exec: {
-        command: sdk.useEntrypoint([
-          'archivebox',
-          'server',
-          '--init',
-          `0.0.0.0:${uiPort}`,
-        ]),
-        env,
-      },
-      ready: {
-        display: i18n('Web Interface'),
-        gracePeriod: 60_000,
-        fn: () =>
-          sdk.healthCheck.checkPortListening(effects, uiPort, {
-            successMessage: i18n('The web interface is ready'),
-            errorMessage: i18n('The web interface is not ready'),
-          }),
-      },
-      requires: ['migrate'],
-    })
+  return sdk.Daemons.of(effects).addDaemon('primary', {
+    subcontainer,
+    exec: {
+      command: sdk.useEntrypoint([
+        'archivebox',
+        'server',
+        '--init',
+        `0.0.0.0:${uiPort}`,
+      ]),
+      env,
+    },
+    ready: {
+      display: i18n('Web Interface'),
+      gracePeriod: 60_000,
+      fn: () =>
+        sdk.healthCheck.checkPortListening(effects, uiPort, {
+          successMessage: i18n('The web interface is ready'),
+          errorMessage: i18n('The web interface is not ready'),
+        }),
+    },
+    requires: [],
+  })
 })
