@@ -2,7 +2,7 @@ import { utils } from '@start9labs/start-sdk'
 import { storeJson } from '../fileModels/store.json'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
-import { adminUsername, mounts } from '../utils'
+import { adminUsername, entrypoint, mounts } from '../utils'
 
 export const setAdminPassword = sdk.Action.withoutInput(
   'set-admin-password',
@@ -24,10 +24,8 @@ export const setAdminPassword = sdk.Action.withoutInput(
       len: 32,
     })
 
-    // Apply the password directly to ArchiveBox's Django auth DB so the same
-    // action covers first-set and later rotation. The SQLite index and /data
-    // ownership are pre-created by `initializeArchivebox` on install, so this
-    // action only does the password write.
+    // Written straight to the Django auth DB, so it works whether or not the
+    // service is running.
     await sdk.SubContainer.withTemp(
       effects,
       { imageId: 'archivebox' },
@@ -36,6 +34,7 @@ export const setAdminPassword = sdk.Action.withoutInput(
       async (sub) => {
         await sub.execFail(
           [
+            entrypoint,
             'archivebox',
             'manage',
             'shell',
@@ -48,7 +47,7 @@ u.is_superuser = True
 u.set_password('${adminPassword}')
 u.save()`,
           ],
-          { user: 'archivebox' },
+          { user: 'root' },
         )
       },
     )

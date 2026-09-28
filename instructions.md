@@ -19,6 +19,10 @@
 
 To rotate the admin password later, run the **Set Admin Password** action again from the service's Actions tab.
 
+### Updating from ArchiveBox 0.7
+
+Back up ArchiveBox before updating. The first start after the update converts your collection to the 0.9 format and can take a long time on a large archive; ArchiveBox shows as starting until it finishes. The conversion cannot be undone.
+
 ## Using ArchiveBox
 
 ### Web UI
@@ -29,6 +33,14 @@ The Web UI is ArchiveBox's primary interface. From there you can:
 - Browse the **Snapshots** list, filter and search, and open any snapshot to view the saved HTML, screenshot, PDF, media, and WARC outputs.
 - Manage tags, public/private visibility, and re-archive jobs from the snapshot detail pages.
 - Manage users and permissions from the Django admin pages linked in the top navigation.
+
+### Mobile and desktop apps
+
+The official ArchiveBox apps for iPhone, iPad, Android, macOS, Windows and Linux connect to your server over its REST API. In the Web UI, open the admin pages and create an **API token** (under **API**), then give the app your ArchiveBox **Web UI** address and that token.
+
+### Archived pages
+
+Saved pages open without running their original JavaScript. Screenshots, PDFs, SingleFile, WARC/WACZ and media captures show the page as it was.
 
 For headless workflows (CLI usage, scheduled imports, custom extractor configuration, programmatic API calls), see the upstream Wiki linked above.
 
