@@ -110,7 +110,7 @@ The index is seeded here rather than left to the action because a cold `archiveb
 
 ### Upgrading from 0.7.x
 
-Updating a 0.7.x install needs nothing from the user, but the update itself is slow. The version migration runs `archivebox update --migrate-only` in the `archivebox-migrate` subcontainer, which applies the 0.9 database migrations and then moves every snapshot from `archive/<timestamp>/` to `archive/users/<username>/snapshots/<YYYYMMDD>/<domain>/<uuid>/`. On a large collection this takes minutes to hours, and the update does not complete until it finishes. Restoring a 0.7.x backup runs the same migration.
+Updating a 0.7.x install needs nothing from the user beyond confirming a pre-download alert (`preDownloadAlert` for `<0.9.70:0` in the manifest, carrying the conversion warning), but the update itself is slow. The version migration runs `archivebox update --migrate-only` in the `archivebox-migrate` subcontainer, which applies the 0.9 database migrations and then moves every snapshot from `archive/<timestamp>/` to `archive/users/<username>/snapshots/<YYYYMMDD>/<domain>/<uuid>/`. On a large collection this takes minutes to hours, and the update does not complete until it finishes. Restoring a 0.7.x backup runs the same migration.
 
 If the conversion fails, StartOS restores the volume from the backup it took before the update and returns the package to 0.7.x. Once it succeeds it cannot be reversed, so the package cannot be downgraded.
 
@@ -123,6 +123,7 @@ One action, and it is both the setup step and the rotation step.
 Generates a 32-character random password and applies it to the `admin` account. Run it when its task appears, and any time afterwards to rotate the password.
 
 - **What it changes:** the `admin` user in ArchiveBox's Django auth database — created with staff and superuser rights if absent — and `adminPassword` in the store.
+- **Confirmation:** once the store holds a password, StartOS asks for confirmation before running, since the current password stops working. The first run, from the install task, does not ask.
 - **Availability:** any status; it works on a stopped service because it writes to the database directly rather than through the running server.
 - **Cost:** seconds. It does not interrupt the service.
 - **Repeat safety:** idempotent in effect, but **not** repeatable in value — each run generates a new password and invalidates the previous one.
