@@ -1,5 +1,5 @@
 import { setupManifest } from '@start9labs/start-sdk'
-import { long, short } from './i18n'
+import { conversionAlert, long, short } from './i18n'
 
 export const manifest = setupManifest({
   id: 'archivebox',
@@ -10,6 +10,10 @@ export const manifest = setupManifest({
   marketingUrl: 'https://archivebox.io/',
   donationUrl: 'https://github.com/sponsors/pirate',
   description: { short, long },
+  preDownloadAlert: {
+    message: conversionAlert,
+    when: { sourceVersion: '<0.9.70:0' },
+  },
   volumes: ['main'],
   images: {
     archivebox: {
@@ -19,5 +23,4 @@ export const manifest = setupManifest({
       arch: ['x86_64', 'aarch64'],
     },
   },
-  dependencies: {},
 })

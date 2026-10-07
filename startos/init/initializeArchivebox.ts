@@ -12,10 +12,9 @@ export const initializeArchivebox = sdk.setupOnInit(async (effects, kind) => {
     mounts,
     'archivebox-init',
     (sub) =>
-      sub.execFail(
-        [entrypoint, 'archivebox', 'init', '--quick'],
-        { user: 'root' },
-        null,
-      ),
+      sub.execFail([entrypoint, 'archivebox', 'init', '--quick'], {
+        user: 'root',
+        timeout: null,
+      }),
   )
 })

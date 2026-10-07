@@ -15,6 +15,7 @@ const dict = {
   'Set Admin Password': 6,
   'Generate a new random password for the ArchiveBox admin account. Replaces any existing password.': 7,
   'ArchiveBox Login Credentials': 8,
+  'Replaces the current admin password. The old password stops working, and the new one is shown only once.': 13,
   'Use these credentials to sign in to ArchiveBox.': 9,
   Username: 10,
   Password: 11,
