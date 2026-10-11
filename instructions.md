@@ -19,10 +19,6 @@
 
 To rotate the admin password later, run the **Set Admin Password** action again from the service's Actions tab. StartOS asks you to confirm first, because the old password stops working.
 
-### Updating from ArchiveBox 0.7
-
-StartOS asks you to confirm before it downloads the update. The update converts your collection to the 0.9 format and can take a long time on a large archive; leave it running until it completes. The conversion cannot be undone.
-
 ## Using ArchiveBox
 
 ### Web UI
