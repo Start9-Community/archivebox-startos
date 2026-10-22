@@ -4,5 +4,6 @@ FROM ${IMAGE}
 RUN apt-get update && apt-get install -y --no-install-recommends --only-upgrade ca-certificates && rm -rf /var/lib/apt/lists/* \
  && ! grep -q MIICTjCCAdOgAwIBAgIKPPYHqWhwDtqLhDAKBggqhkjOPQQDAzBr /etc/ssl/certs/ca-certificates.crt \
  && find /venv /opt/archivebox/lib/uv -path '*/certifi/cacert.pem' -exec sh -ec \
-      'for bundle do cp /etc/ssl/certs/ca-certificates.crt "$bundle"; done' sh {} +
+      'for bundle do cp /etc/ssl/certs/ca-certificates.crt "$bundle"; done' sh {} + \
+ && ! find /venv /opt/archivebox/lib/uv -path '*/certifi/cacert.pem' -exec grep -l MIICTjCCAdOgAwIBAgIKPPYHqWhwDtqLhDAKBggqhkjOPQQDAzBr {} + | grep -q .
 ENV NODE_OPTIONS=--use-openssl-ca
