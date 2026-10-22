@@ -35,7 +35,7 @@
 
 ## Image and Container Runtime
 
-One upstream image, running its own entrypoint. The root `Dockerfile` upgrades its CA stores (system bundle, certifi, and `NODE_OPTIONS=--use-openssl-ca` for Node); the layer comes out once upstream ships an image built on a fixed store.
+One upstream image, running its own entrypoint. The root `Dockerfile` upgrades its CA stores (system bundle, certifi in both `/venv` and the extractor environments under `/opt/archivebox/lib/uv`, and `NODE_OPTIONS=--use-openssl-ca` for Node); the layer comes out once upstream ships an image built on a fixed store.
 
 | Property      | Value                                                                 |
 | ------------- | --------------------------------------------------------------------- |

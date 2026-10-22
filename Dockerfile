@@ -2,7 +2,7 @@ ARG IMAGE
 FROM ${IMAGE}
 # The base image's CA store is only as current as its last release; certifi and Node carry their own copies.
 RUN apt-get update && apt-get install -y --no-install-recommends --only-upgrade ca-certificates && rm -rf /var/lib/apt/lists/* \
- && find /venv -path '*/certifi/cacert.pem' -exec cp /etc/ssl/certs/ca-certificates.crt {} \; \
  && ! grep -q MIICTjCCAdOgAwIBAgIKPPYHqWhwDtqLhDAKBggqhkjOPQQDAzBr /etc/ssl/certs/ca-certificates.crt \
- && ! grep -rq --include=cacert.pem MIICTjCCAdOgAwIBAgIKPPYHqWhwDtqLhDAKBggqhkjOPQQDAzBr /venv
+ && find /venv /opt/archivebox/lib/uv -path '*/certifi/cacert.pem' -exec sh -ec \
+      'for bundle do cp /etc/ssl/certs/ca-certificates.crt "$bundle"; done' sh {} +
 ENV NODE_OPTIONS=--use-openssl-ca
