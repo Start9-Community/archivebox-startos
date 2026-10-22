@@ -9,7 +9,7 @@
 > upstream documentation is accurate and fully applicable — see the
 > Documentation section of `instructions.md` for links.
 
-[ArchiveBox](https://github.com/ArchiveBox/ArchiveBox) is a self-hosted internet archiver: it takes URLs you feed it and saves each one as HTML, PDF, screenshot, WARC, and media, then indexes the results so they stay readable offline. This package runs the upstream image unmodified and adds the one thing the image cannot do for itself — provision the admin account.
+[ArchiveBox](https://github.com/ArchiveBox/ArchiveBox) is a self-hosted internet archiver: it takes URLs you feed it and saves each one as HTML, PDF, screenshot, WARC, and media, then indexes the results so they stay readable offline. This package runs the upstream image, with a temporary CA-store layer, and adds the one thing the image cannot do for itself — provision the admin account.
 
 - **Upstream repo:** <https://github.com/ArchiveBox/ArchiveBox>
 - **Wrapper repo:** <https://github.com/Start9-Community/archivebox-startos>
@@ -35,11 +35,11 @@
 
 ## Image and Container Runtime
 
-One upstream image, unmodified, running its own entrypoint.
+One upstream image, running its own entrypoint. The root `Dockerfile` upgrades its CA stores (system bundle, certifi in both `/venv` and the extractor environments under `/opt/archivebox/lib/uv`, and `NODE_OPTIONS=--use-openssl-ca` for Node); the layer comes out once upstream ships an image built on a fixed store.
 
 | Property      | Value                                                                 |
 | ------------- | --------------------------------------------------------------------- |
-| Image         | `archivebox/archivebox`                                               |
+| Image         | `archivebox/archivebox` + root `Dockerfile`                           |
 | Architectures | x86_64, aarch64                                                       |
 | Entrypoint    | Upstream's, via `sdk.useEntrypoint()`; only the command is overridden |
 
