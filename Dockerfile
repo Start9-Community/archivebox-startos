@@ -7,3 +7,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends --only-upgrade 
       'for bundle do cp /etc/ssl/certs/ca-certificates.crt "$bundle"; done' sh {} + \
  && ! find /venv /opt/archivebox/lib/uv -path '*/certifi/cacert.pem' -exec grep -l MIICTjCCAdOgAwIBAgIKPPYHqWhwDtqLhDAKBggqhkjOPQQDAzBr {} + | grep -q .
 ENV NODE_OPTIONS=--use-openssl-ca
+COPY --from=node:24.22.1-trixie-slim /usr/local/bin/node /opt/node/bin/node
+RUN [ "$(node --version)" = v24.22.1 ]
