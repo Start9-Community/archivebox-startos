@@ -27,7 +27,7 @@ The Web UI is ArchiveBox's primary interface. From there you can:
 
 - **Add** URLs (or paste a list / RSS feed / bookmark export) and choose which extractors to run.
 - Browse the **Snapshots** list, filter and search, and open any snapshot to view the saved HTML, screenshot, PDF, media, and WARC outputs.
-- Manage tags, public/private visibility, and re-archive jobs from the snapshot detail pages. The snapshot list itself always requires your login; a snapshot's visibility decides only whether its direct link opens without one.
+- Manage tags, public/private visibility, and re-archive jobs from the snapshot detail pages. The snapshot list requires your login by default. Setting `PUBLIC_INDEX` to true in ArchiveBox's Machine config editor publishes the public snapshots list; persisted settings are preserved across updates. Public and unlisted snapshots open by direct link without a login, while private snapshots require one.
 - Manage users and permissions from the Django admin pages linked in the top navigation.
 
 ### Mobile and desktop apps

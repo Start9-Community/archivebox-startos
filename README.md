@@ -59,7 +59,9 @@ Three environment variables are set on the daemon:
 | ---------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `ALLOWED_HOSTS`        | `*`                         | StartOS decides which addresses reach the service; ArchiveBox's own allowlist would only reject an address the OS already permitted                                                              |
 | `SERVER_SECURITY_MODE` | `safe-onedomain-nojsreplay` | Serves the admin, API and archived content on whichever address the browser used, with no `BASE_URL` and no wildcard subdomains                                                                  |
-| `PUBLIC_INDEX`         | `False`                     | The snapshot list at `/public` requires the admin login. With no `PERMISSIONS` set in `ArchiveBox.conf`, upstream then defaults new snapshots to `unlisted`: served by direct link, never listed |
+| `PUBLIC_INDEX`         | `False`                     | Defaults `/public` to requiring login and new snapshots to `unlisted`; explicit snapshot permissions and persisted machine settings take precedence |
+
+These environment values override file-loaded defaults, not persisted `Machine.config`. ArchiveBox applies machine settings afterward; setting `PUBLIC_INDEX` to true in the Machine config editor republishes the index. ArchiveBox synchronizes `ArchiveBox.conf` with `Machine.config`, so a persisted true value can also survive an update. The index is login-only by default, not an unconditional access restriction. Existing snapshot permissions are unchanged.
 
 `BASE_URL` is left unset. Upstream's default `auto` mode wants one canonical URL with `admin.`/`web.`/`api.` subdomains beneath it, and a StartOS service is reached on several addresses at once (LAN, IP, Tor, custom domains) — pinning any one would break the others. With `BASE_URL` unset, ArchiveBox honours the proxy's `X-Forwarded-Proto`, so logins over HTTPS pass Django's CSRF origin check.
 
@@ -166,7 +168,7 @@ Backups scale with the collection, which is the practical constraint here — a 
 2. **The admin account is the only one this package provisions.** Additional users are created from within ArchiveBox.
 3. **There is no way to set a chosen password.** The action generates one; it does not accept input.
 4. **Archived pages' JavaScript is not replayed.** `safe-onedomain-nojsreplay` serves saved HTML without running its scripts, because they would share an origin with the admin session. Screenshots, PDFs, SingleFile, WARC/WACZ and media outputs are unaffected. Full replay needs upstream's wildcard-subdomain mode, which StartOS does not provide.
-5. **`SERVER_SECURITY_MODE` cannot be changed from the admin UI.** It is set by environment variable, which overrides ArchiveBox's own config.
+5. **Environment settings are defaults, not locks.** Persisted settings in ArchiveBox's Machine config editor override `SERVER_SECURITY_MODE` and `PUBLIC_INDEX`; the package does not remove those overrides.
 6. **Links in the Archive Results table on a snapshot's admin edit page point at `http://archivebox.localhost:8000`.** Upstream builds those links without the request, so with `BASE_URL` unset they fall back to its local default. The snapshot view page and its outputs link correctly; open results from there.
 
 ---

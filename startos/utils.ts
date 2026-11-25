@@ -10,6 +10,7 @@ export const entrypoint = '/app/bin/docker_entrypoint.sh'
 export const env = {
   ALLOWED_HOSTS: '*',
   SERVER_SECURITY_MODE: 'safe-onedomain-nojsreplay',
+  // Persisted Machine.config can override this index default.
   PUBLIC_INDEX: 'False',
 }
 
