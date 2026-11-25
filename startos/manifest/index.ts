@@ -5,7 +5,7 @@ export const manifest = setupManifest({
   id: 'archivebox',
   title: 'ArchiveBox',
   license: 'MIT',
-  packageRepo: 'https://github.com/Start9-Community/archivebox-startos',
+  packageRepo: 'https://github.com/Start9Labs/archivebox-startos',
   upstreamRepo: 'https://github.com/ArchiveBox/ArchiveBox',
   marketingUrl: 'https://archivebox.io/',
   donationUrl: 'https://github.com/sponsors/pirate',
