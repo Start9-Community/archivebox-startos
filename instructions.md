@@ -27,8 +27,19 @@ The Web UI is ArchiveBox's primary interface. From there you can:
 
 - **Add** URLs (or paste a list / RSS feed / bookmark export) and choose which extractors to run.
 - Browse the **Snapshots** list, filter and search, and open any snapshot to view the saved HTML, screenshot, PDF, media, and WARC outputs.
-- Manage tags, public/private visibility, and re-archive jobs from the snapshot detail pages. The snapshot list requires your login by default. Setting `PUBLIC_INDEX` to true in ArchiveBox's Machine config editor publishes the public snapshots list; persisted settings are preserved across updates. Public and unlisted snapshots open by direct link without a login, while private snapshots require one.
+- Manage tags, visibility, and re-archive jobs from the snapshot detail pages.
 - Manage users and permissions from the Django admin pages linked in the top navigation.
+
+### Who can see your snapshots
+
+New snapshots are **Private**: only a signed-in admin account can open them. To share one, change its visibility on its detail page, or pick a visibility in the **Add** form for everything that crawl saves:
+
+- **Unlisted** opens for anyone who has its link, or who asks for it by its original URL.
+- **Public** opens the same way, and is also listed on the public snapshot list.
+
+The public snapshot list requires your login. To publish it, set `PUBLIC_INDEX` to true in ArchiveBox's Machine config editor.
+
+Each persona has its own default visibility, which the **Add** form starts at. The **Default** persona's is Private. A persona you create in the admin pages starts at Public in its form, so choose Private there to keep its snapshots private.
 
 ### Mobile and desktop apps
 
