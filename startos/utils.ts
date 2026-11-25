@@ -10,6 +10,9 @@ export const entrypoint = '/app/bin/docker_entrypoint.sh'
 export const env = {
   ALLOWED_HOSTS: '*',
   SERVER_SECURITY_MODE: 'safe-onedomain-nojsreplay',
+  // Defaults only: persisted Machine.config and a persona's own config override both.
+  PUBLIC_INDEX: 'False',
+  PERMISSIONS: 'private',
 }
 
 export const mounts = sdk.Mounts.of().mountVolume({

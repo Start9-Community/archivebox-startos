@@ -47,18 +47,24 @@ One upstream image, running its own entrypoint. The root `Dockerfile` upgrades i
 | -------------------- | ---------------------------------------------------------- |
 | `archivebox-sub`     | The `primary` daemon — the one to `attach` to              |
 | `archivebox-init`    | Temporary, install only: seeds the index                   |
-| `archivebox-migrate` | Temporary, update from 0.7.x only: converts the collection |
+| `archivebox-migrate` | Temporary, update only: version migrations (see [Upgrading](#upgrading)) |
 
 The action below also runs in a temporary subcontainer of its own, named for the action.
 
 Upstream's entrypoint (`dumb-init -- /app/bin/docker_entrypoint.sh`) repairs ownership of the top-level `/data` directories, drops to the `archivebox` user, and runs `archivebox server --init 0.0.0.0:8000`, which applies any pending database migrations and then serves the web interface. The daemon overrides only the listen port — upstream's default is 5797 — so the interface's port, and therefore every address StartOS assigned it, stays stable across updates. The temporary subcontainers call the same entrypoint script as root, so every command runs as the `archivebox` user against a correctly owned collection.
 
-Two environment variables are set on the daemon:
+Four environment variables are set on the daemon and on the install-time `archivebox init`:
 
-| Variable               | Value                       | Why                                                                                                                                 |
-| ---------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `ALLOWED_HOSTS`        | `*`                         | StartOS decides which addresses reach the service; ArchiveBox's own allowlist would only reject an address the OS already permitted |
-| `SERVER_SECURITY_MODE` | `safe-onedomain-nojsreplay` | Serves the admin, API and archived content on whichever address the browser used, with no `BASE_URL` and no wildcard subdomains     |
+| Variable               | Value                       | Why                                                                                                                                                                                              |
+| ---------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ALLOWED_HOSTS`        | `*`                         | StartOS decides which addresses reach the service; ArchiveBox's own allowlist would only reject an address the OS already permitted                                                              |
+| `SERVER_SECURITY_MODE` | `safe-onedomain-nojsreplay` | Serves the admin, API and archived content on whichever address the browser used, with no `BASE_URL` and no wildcard subdomains                                                                  |
+| `PUBLIC_INDEX`         | `False`                     | `/public`, the public snapshot search and tag autocomplete require the login |
+| `PERMISSIONS`          | `private`                   | New snapshots are private: only a logged-in admin can open them |
+
+These are defaults, not locks. Upstream resolves config as environment and `ArchiveBox.conf` first, then persisted `Machine.config` (which it keeps in sync with `ArchiveBox.conf`), then the persona's config, then the crawl's and snapshot's own. So a `PUBLIC_INDEX` set to true in the Machine config editor republishes the index, and survives updates.
+
+A snapshot's permission (`public`, `unlisted` or `private`) is fixed when it is created. Each crawl copies `PERMISSIONS` from the persona it runs under, and each snapshot from its crawl. The Add form's permission field starts at the persona's value. A persona stores `PERMISSIONS` when it is created, so the Default persona that `archivebox init` creates holds `private`. That is why init gets the same environment as the daemon. Public and unlisted snapshots open without the login by direct link or original URL. Only public ones are listed, on `/public`, and that page is behind the login unless `PUBLIC_INDEX` is turned back on.
 
 `BASE_URL` is left unset. Upstream's default `auto` mode wants one canonical URL with `admin.`/`web.`/`api.` subdomains beneath it, and a StartOS service is reached on several addresses at once (LAN, IP, Tor, custom domains) — pinning any one would break the others. With `BASE_URL` unset, ArchiveBox honours the proxy's `X-Forwarded-Proto`, so logins over HTTPS pass Django's CSRF origin check.
 
@@ -104,15 +110,21 @@ The port is bound on the `ui-multi` MultiHost over HTTP and is not masked.
 
 Install does two things upstream leaves to the operator, then hands the account over to the user.
 
-First it runs `archivebox init --quick` in a temporary subcontainer, so the SQLite index exists before anything else touches it. Then it checks the store, finds no password, and raises a `critical` task for [Set Admin Password](#actions).
+First it runs `archivebox init --quick`, with the daemon's environment, in a temporary subcontainer, so the SQLite index exists before anything else touches it. Then it checks the store, finds no password, and raises a `critical` task for [Set Admin Password](#actions).
 
 The index is seeded here rather than left to the action because a cold `archivebox init --quick` routinely runs longer than the SDK's 30-second exec limit, and the action would be killed mid-write. By the time the user runs it, the only work left is the password.
 
-### Upgrading from 0.7.x
+### Upgrading
+
+#### From 0.7.x
 
 Updating a 0.7.x install needs nothing from the user beyond confirming a pre-download alert (`preDownloadAlert` for `<0.9.70:0` in the manifest, carrying the conversion warning), but the update itself is slow. The version migration runs `archivebox update --migrate-only` in the `archivebox-migrate` subcontainer, which applies the 0.9 database migrations and then moves every snapshot from `archive/<timestamp>/` to `archive/users/<username>/snapshots/<YYYYMMDD>/<domain>/<uuid>/`. On a large collection this takes minutes to hours, and the update does not complete until it finishes. Restoring a 0.7.x backup runs the same migration.
 
 If the conversion fails, StartOS restores the volume from the backup it took before the update and returns the package to 0.7.x. Once it succeeds it cannot be reversed, so the package cannot be downgraded.
+
+#### To 0.9.73:3
+
+The `0.9.73:3` migration changes the Default persona's stored `PERMISSIONS` from `public` to `private`, in the same subcontainer, with a direct SQLite update. It leaves a Default persona set to `unlisted` or `private`, and every other persona, as it is. Existing snapshots and crawls keep the permission stored on them: anything created before `0.9.73:3` is `public` unless someone changed it, which means it opens without the login by direct link or original URL. Restoring an older backup runs the same migration.
 
 ## Actions
 
@@ -165,8 +177,9 @@ Backups scale with the collection, which is the practical constraint here — a 
 2. **The admin account is the only one this package provisions.** Additional users are created from within ArchiveBox.
 3. **There is no way to set a chosen password.** The action generates one; it does not accept input.
 4. **Archived pages' JavaScript is not replayed.** `safe-onedomain-nojsreplay` serves saved HTML without running its scripts, because they would share an origin with the admin session. Screenshots, PDFs, SingleFile, WARC/WACZ and media outputs are unaffected. Full replay needs upstream's wildcard-subdomain mode, which StartOS does not provide.
-5. **`SERVER_SECURITY_MODE` cannot be changed from the admin UI.** It is set by environment variable, which overrides ArchiveBox's own config.
-6. **Links in the Archive Results table on a snapshot's admin edit page point at `http://archivebox.localhost:8000`.** Upstream builds those links without the request, so with `BASE_URL` unset they fall back to its local default. The snapshot view page and its outputs link correctly; open results from there.
+5. **Environment settings are defaults, not locks.** Settings saved in ArchiveBox's Machine config editor override `SERVER_SECURITY_MODE`, `PUBLIC_INDEX` and `PERMISSIONS`, and a persona's own `PERMISSIONS` overrides the environment for crawls run under it. The package leaves those settings alone.
+6. **A persona created from the admin pages starts at Public.** Upstream's persona form defaults its permission field to `public` rather than to `PERMISSIONS`, so a new persona is private only if the user picks Private.
+7. **Links in the Archive Results table on a snapshot's admin edit page point at `http://archivebox.localhost:8000`.** Upstream builds those links without the request, so with `BASE_URL` unset they fall back to its local default. The snapshot view page and its outputs link correctly; open results from there.
 
 ---
 
@@ -181,7 +194,7 @@ architectures:
 subcontainers:
   - archivebox-sub # the primary daemon
   - archivebox-init # temporary, install only
-  - archivebox-migrate # temporary, update from 0.7.x only
+  - archivebox-migrate # temporary, update only
 volumes:
   main: /data
 file_models:
@@ -189,6 +202,8 @@ file_models:
 startos_managed_env_vars:
   - ALLOWED_HOSTS
   - SERVER_SECURITY_MODE
+  - PUBLIC_INDEX
+  - PERMISSIONS
 dependencies: []
 interfaces:
   ui: { type: ui, port: 8000 }
