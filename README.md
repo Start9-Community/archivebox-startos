@@ -53,12 +53,13 @@ The action below also runs in a temporary subcontainer of its own, named for the
 
 Upstream's entrypoint (`dumb-init -- /app/bin/docker_entrypoint.sh`) repairs ownership of the top-level `/data` directories, drops to the `archivebox` user, and runs `archivebox server --init 0.0.0.0:8000`, which applies any pending database migrations and then serves the web interface. The daemon overrides only the listen port — upstream's default is 5797 — so the interface's port, and therefore every address StartOS assigned it, stays stable across updates. The temporary subcontainers call the same entrypoint script as root, so every command runs as the `archivebox` user against a correctly owned collection.
 
-Two environment variables are set on the daemon:
+Three environment variables are set on the daemon:
 
-| Variable               | Value                       | Why                                                                                                                                 |
-| ---------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `ALLOWED_HOSTS`        | `*`                         | StartOS decides which addresses reach the service; ArchiveBox's own allowlist would only reject an address the OS already permitted |
-| `SERVER_SECURITY_MODE` | `safe-onedomain-nojsreplay` | Serves the admin, API and archived content on whichever address the browser used, with no `BASE_URL` and no wildcard subdomains     |
+| Variable               | Value                       | Why                                                                                                                                                                                              |
+| ---------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ALLOWED_HOSTS`        | `*`                         | StartOS decides which addresses reach the service; ArchiveBox's own allowlist would only reject an address the OS already permitted                                                              |
+| `SERVER_SECURITY_MODE` | `safe-onedomain-nojsreplay` | Serves the admin, API and archived content on whichever address the browser used, with no `BASE_URL` and no wildcard subdomains                                                                  |
+| `PUBLIC_INDEX`         | `False`                     | The snapshot list at `/public` requires the admin login. With no `PERMISSIONS` set in `ArchiveBox.conf`, upstream then defaults new snapshots to `unlisted`: served by direct link, never listed |
 
 `BASE_URL` is left unset. Upstream's default `auto` mode wants one canonical URL with `admin.`/`web.`/`api.` subdomains beneath it, and a StartOS service is reached on several addresses at once (LAN, IP, Tor, custom domains) — pinning any one would break the others. With `BASE_URL` unset, ArchiveBox honours the proxy's `X-Forwarded-Proto`, so logins over HTTPS pass Django's CSRF origin check.
 

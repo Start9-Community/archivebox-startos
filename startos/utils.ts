@@ -10,6 +10,7 @@ export const entrypoint = '/app/bin/docker_entrypoint.sh'
 export const env = {
   ALLOWED_HOSTS: '*',
   SERVER_SECURITY_MODE: 'safe-onedomain-nojsreplay',
+  PUBLIC_INDEX: 'False',
 }
 
 export const mounts = sdk.Mounts.of().mountVolume({

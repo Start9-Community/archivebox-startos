@@ -1,14 +1,13 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '0.9.73:2',
+  version: '0.9.73:3',
   releaseNotes: {
-    en_US: 'Includes the October 2026 Node.js security fixes.',
-    es_ES:
-      'Incluye las correcciones de seguridad de Node.js de octubre de 2026.',
-    de_DE: 'Enthält die Node.js-Sicherheitskorrekturen vom Oktober 2026.',
-    pl_PL: 'Zawiera poprawki bezpieczeństwa Node.js z października 2026.',
-    fr_FR: `Inclut les correctifs de sécurité Node.js d'octobre 2026.`,
+    en_US: 'The snapshot list requires the ArchiveBox login.',
+    es_ES: 'La lista de capturas requiere el inicio de sesión de ArchiveBox.',
+    de_DE: 'Die Snapshot-Liste erfordert die ArchiveBox-Anmeldung.',
+    pl_PL: 'Lista zrzutów wymaga logowania do ArchiveBox.',
+    fr_FR: 'La liste des instantanés nécessite la connexion à ArchiveBox.',
   },
   migrations: {
     up: async ({ effects }) => {},
