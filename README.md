@@ -12,7 +12,7 @@
 [ArchiveBox](https://github.com/ArchiveBox/ArchiveBox) is a self-hosted internet archiver: it takes URLs you feed it and saves each one as HTML, PDF, screenshot, WARC, and media, then indexes the results so they stay readable offline. This package runs the upstream image, with a temporary CA-store and Node layer, and adds the one thing the image cannot do for itself — provision the admin account.
 
 - **Upstream repo:** <https://github.com/ArchiveBox/ArchiveBox>
-- **Wrapper repo:** <https://github.com/Start9-Community/archivebox-startos>
+- **Wrapper repo:** <https://github.com/Start9Labs/archivebox-startos>
 
 ---
 
@@ -43,10 +43,10 @@ One upstream image, running its own entrypoint. The root `Dockerfile` upgrades i
 | Architectures | x86_64, aarch64                                                       |
 | Entrypoint    | Upstream's, via `sdk.useEntrypoint()`; only the command is overridden |
 
-| Subcontainer         | Purpose                                                    |
-| -------------------- | ---------------------------------------------------------- |
-| `archivebox-sub`     | The `primary` daemon — the one to `attach` to              |
-| `archivebox-init`    | Temporary, install only: seeds the index                   |
+| Subcontainer         | Purpose                                                                  |
+| -------------------- | ------------------------------------------------------------------------ |
+| `archivebox-sub`     | The `primary` daemon — the one to `attach` to                            |
+| `archivebox-init`    | Temporary, install only: seeds the index                                 |
 | `archivebox-migrate` | Temporary, update only: version migrations (see [Upgrading](#upgrading)) |
 
 The action below also runs in a temporary subcontainer of its own, named for the action.
@@ -55,12 +55,12 @@ Upstream's entrypoint (`dumb-init -- /app/bin/docker_entrypoint.sh`) repairs own
 
 Four environment variables are set on the daemon and on the install-time `archivebox init`:
 
-| Variable               | Value                       | Why                                                                                                                                                                                              |
-| ---------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ALLOWED_HOSTS`        | `*`                         | StartOS decides which addresses reach the service; ArchiveBox's own allowlist would only reject an address the OS already permitted                                                              |
-| `SERVER_SECURITY_MODE` | `safe-onedomain-nojsreplay` | Serves the admin, API and archived content on whichever address the browser used, with no `BASE_URL` and no wildcard subdomains                                                                  |
-| `PUBLIC_INDEX`         | `False`                     | `/public`, the public snapshot search and tag autocomplete require the login |
-| `PERMISSIONS`          | `private`                   | New snapshots are private: only a logged-in admin can open them |
+| Variable               | Value                       | Why                                                                                                                                 |
+| ---------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `ALLOWED_HOSTS`        | `*`                         | StartOS decides which addresses reach the service; ArchiveBox's own allowlist would only reject an address the OS already permitted |
+| `SERVER_SECURITY_MODE` | `safe-onedomain-nojsreplay` | Serves the admin, API and archived content on whichever address the browser used, with no `BASE_URL` and no wildcard subdomains     |
+| `PUBLIC_INDEX`         | `False`                     | `/public`, the public snapshot search and tag autocomplete require the login                                                        |
+| `PERMISSIONS`          | `private`                   | New snapshots are private: only a logged-in admin can open them                                                                     |
 
 These are defaults, not locks. Upstream resolves config as environment and `ArchiveBox.conf` first, then persisted `Machine.config` (which it keeps in sync with `ArchiveBox.conf`), then the persona's config, then the crawl's and snapshot's own. So a `PUBLIC_INDEX` set to true in the Machine config editor republishes the index, and survives updates.
 
