@@ -34,9 +34,10 @@ export const v_0_9_73_3 = VersionInfo.of({
         mounts,
         'archivebox-migrate',
         (sub) =>
-          sub.execFail([entrypoint, 'python3', '-c', privateDefaultPersona], {
-            user: 'root',
-          }),
+          sub.execFail(
+            [entrypoint, '/venv/bin/python3', '-c', privateDefaultPersona],
+            { user: 'root' },
+          ),
       )
     },
     down: IMPOSSIBLE,
