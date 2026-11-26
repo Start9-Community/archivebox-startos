@@ -3,6 +3,7 @@ import { sdk } from './sdk'
 export const uiPort = 8000
 export const dataPath = '/data'
 export const adminUsername = 'admin'
+// Pass absolute paths for binaries outside the entrypoint's bare-command allowlist.
 export const entrypoint = '/app/bin/docker_entrypoint.sh'
 
 // StartOS reaches the service on several addresses at once, so no single
